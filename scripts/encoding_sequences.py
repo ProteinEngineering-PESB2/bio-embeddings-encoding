@@ -1,74 +1,103 @@
-from bio_embeddings.embed import *
+import sys, os, argparse
+from bio_embeddings.embed import ( ESM1bEmbedder, BeplerEmbedder, ProtTransT5BFDEmbedder, CPCProtEmbedder, ESMEmbedder, ESM1vEmbedder, FastTextEmbedder, GloveEmbedder, OneHotEncodingEmbedder, PLUSRNNEmbedder, ProtTransAlbertBFDEmbedder, ProtTransBertBFDEmbedder, ProtTransT5BFDEmbedder, ProtTransT5XLU50Embedder, ProtTransXLNetUniRef100Embedder, Word2VecEmbedder, SeqVecEmbedder)
 import pandas as pd
 import numpy as np
-import sys
-import os
 from tqdm import tqdm
+from parser import FastaParse
 
-data_path = sys.argv[1]
-export_path = sys.argv[2]
-sequence_col = sys.argv[3]
-export_cols = sys.argv[4].split(",")
-embedder_name = sys.argv[5]
-device = 'cuda'
+class UsingBioembeddings:
+    """"""
+    def __init__( self, dataset=None, column_seq=None, is_reduced=True, device = None ):
+        self.dataset = dataset
+        self.column_seq = column_seq
+        self.is_reduced=is_reduced
+        self.device = device
 
-def trunc(values, decs=0):
-    return np.trunc(values*10**decs)/(10**decs)
+        # to save the results
+        self.embedder = None
+        self.embeddings = None
+        self.np_data = None
 
-def ProtTransT5XLU50(device: str):
-    return ProtTransT5XLU50Embedder(half_precision_model=True, device=device)
+    def __reducing(self):
+        self.np_data = np.zeros(shape=(len(self.dataset), self.embedder.embedding_dimension))
+        for idx, embed in tqdm(enumerate(self.embeddings), desc="Reducing embeddings"):
+            self.np_data[idx] = self.embedder.reduce_per_protein(embed)
 
-def ESM1v(device: str):
-    return ESM1vEmbedder(ensemble_id=5, device=device)
+    def __non_reducing(self):
+        max_length = 150
+        self.np_data = np.zeros(shape=(len(self.dataset), max_length, self.embedder.embedding_dimension))
+        for idx, embed in tqdm(enumerate(self.embeddings), desc="Assigning embeddings"):
+            if len(embed) >= max_length:
+                embed = embed[:max_length]
+            else:
+                embed = np.pad(embed, ((0, max_length - len(embed)), (0, 0)), 'constant')
+            self.np_data[idx] = embed
+    
 
-def default():
-    print(f"Model not found.")
-    exit(-1)
+    def apply_model(self, model, embedding_dim):
+        """"""
+        if self.device is not None:
+            self.embedder = model(device=self.device, embedding_dimension = embedding_dim)
+        else:
+            self.embedder = model( embedding_dimension = embedding_dim)
+        self.embeddings = self.embedder.embed_many(
+            self.dataset[self.column_seq].to_list())
+        if self.is_reduced is True:
+            self.__reducing()
+        else:
+            self.__non_reducing()
+        return self.np_data
 
-models = {
-    'bepler': BeplerEmbedder,
-    'cpcprot': CPCProtEmbedder,
-    'esm': ESMEmbedder,
-    'esm1b': ESM1bEmbedder,
-    'esm1v': ESM1v,
-    'fasttext': FastTextEmbedder,
-    'glove': GloveEmbedder,
-    'one_hot_encoding': OneHotEncodingEmbedder,
-    'plus_rnn': PLUSRNNEmbedder,
-    'prottrans_albert_bfd': ProtTransAlbertBFDEmbedder,
-    'prottrans_bert_bfd': ProtTransBertBFDEmbedder,
-    'prottrans_t5_xl_u50': ProtTransT5XLU50,
-    'prottrans_xlnet_uniref100': ProtTransXLNetUniRef100Embedder,
-    'seqvec': SeqVecEmbedder,
-    'unirep': UniRepEmbedder,
-    'word2vec': Word2VecEmbedder,
-}
 
-print("Loading Data")
-sequences = pd.read_csv(data_path)
+if __name__ == "__main__":
 
-print(f"Loading {embedder_name} Model")
-embedder = None
-try:
-    embedder = models[embedder_name](device=device)
-except KeyError:
-    default()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i","--input", help="Input file", required=True)
+    parser.add_argument("-o","--output", help ="Output file path", required=True)
+    parser.add_argument("-s","--seq_col", help="Name of the sequence column", required=True)
+    parser.add_argument("-e","--embedder", help="Name of the embedder", required=True)
+    parser.add_argument("--reduced", action="store_true")
+    args = parser.parse_args()
+    
+    print("Loading Data")
+    
+    if args.input.endswith('.fasta'):
+        df = FastaParse(args.input, args.seq_col)
+    else:
+        df = pd.read_csv(args.input)
 
-print("Encoding")
-np_data = np.zeros(shape=(len(sequences),embedder.embedding_dimension))
-embeddings = embedder.embed_many(sequences.loc[:,sequence_col].to_list())
-for idx, embed in tqdm(enumerate(embeddings), desc="Reducing embeddings"):
-    np_data[idx] = embedder.reduce_per_protein(embed)
-np_data = trunc(np_data, decs=4)
+    bio_embeddings = UsingBioembeddings(df, args.seq_col, args.reduced, device='cuda')
+    
+    """
+    ESM1v uses an ensemble of five models, called `esm1v_t33_650M_UR90S_[1-5]`. An instance of this class is one
+    of the five, specified by `ensemble_id`.
+    """
+    dict_models = {
+        "bepler" : (BeplerEmbedder, 121),
+        "cpcprot" : (CPCProtEmbedder, 512),
+        "esm" : (ESMEmbedder, 1280),
+        "esm1b" : (ESM1bEmbedder, 1280),
+        "esm1v" : (ESM1vEmbedder(ensemble_id=5), 1280),
+        "fasttext" : (FastTextEmbedder, 512),
+        "glove" : (GloveEmbedder, 512),
+        "onehot" : (OneHotEncodingEmbedder, 21),
+        "plusrnn" : (PLUSRNNEmbedder, 1024),
+        "prottrans_albert" : (ProtTransAlbertBFDEmbedder, 4096),
+        "prottrans_bert" : (ProtTransBertBFDEmbedder, 1024),
+        "prottrans_t5bfd" : (ProtTransT5BFDEmbedder, 1024),
+        "prottrans_xlnet_uniref100" : (ProtTransXLNetUniRef100Embedder, 1024),
+        "prottrans_t5xlu50" : (ProtTransT5XLU50Embedder, 1024),
+        "seqvec" : (SeqVecEmbedder, 1024),
+        "word2vec" : (Word2VecEmbedder, 512),
+    }
+    
+    print(f"Loading {args.embedder} Model")
+    encoded_df = bio_embeddings.apply_model(dict_models[args.embedder][0], dict_models[args.embedder][1])
 
-print("Processing")
-header = ['p_{}'.format(i) for i in range(embedder.embedding_dimension)]
-df_data = pd.DataFrame(np_data, columns=header)
-for idx, col in enumerate(export_cols):
-    df_data.insert(loc=idx, column=col, value=sequences[col])
+    print("Saving data")
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
-print("Saving data")
-if not os.path.exists(export_path):
-    os.mkdir(export_path)
-
-df_data.to_csv(f"{export_path}{embedder_name}_encoding.csv",index=False)
+    with open("{}{}{}.npy".format(args.output, args.embedder,"_reduced" if args.reduced else ""), 'wb') as f:
+        np.save(f, encoded_df)
+    
