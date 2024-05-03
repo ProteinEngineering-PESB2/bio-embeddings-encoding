@@ -1,9 +1,9 @@
 import sys, os, argparse
-from bio_embeddings.embed import ( ESM1bEmbedder, BeplerEmbedder, ProtTransT5BFDEmbedder, CPCProtEmbedder, ESMEmbedder, ESM1vEmbedder, FastTextEmbedder, GloveEmbedder, OneHotEncodingEmbedder, PLUSRNNEmbedder, ProtTransAlbertBFDEmbedder, ProtTransBertBFDEmbedder, ProtTransT5BFDEmbedder, ProtTransT5XLU50Embedder, ProtTransXLNetUniRef100Embedder, Word2VecEmbedder, SeqVecEmbedder)
+from bio_embeddings.embed import ( ESM1bEmbedder, BeplerEmbedder, ProtTransT5BFDEmbedder, CPCProtEmbedder, ESMEmbedder, FastTextEmbedder, GloveEmbedder, OneHotEncodingEmbedder, PLUSRNNEmbedder, ProtTransAlbertBFDEmbedder, ProtTransBertBFDEmbedder, ProtTransT5BFDEmbedder, ProtTransT5XLU50Embedder, ProtTransXLNetUniRef100Embedder, Word2VecEmbedder, SeqVecEmbedder)
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from parser import FastaParse
+from parser import FastaParse, FastaSave
 
 class UsingBioembeddings:
     """"""
@@ -24,7 +24,7 @@ class UsingBioembeddings:
             self.np_data[idx] = self.embedder.reduce_per_protein(embed)
 
     def __non_reducing(self):
-        max_length = 150
+        max_length = 100
         self.np_data = np.zeros(shape=(len(self.dataset), max_length, self.embedder.embedding_dimension))
         for idx, embed in tqdm(enumerate(self.embeddings), desc="Assigning embeddings"):
             if len(embed) >= max_length:
@@ -58,6 +58,12 @@ if __name__ == "__main__":
     parser.add_argument("-e","--embedder", help="Name of the embedder", required=True)
     parser.add_argument("--reduced", action="store_true")
     args = parser.parse_args()
+    max_rows = 50000
+
+    if os.path.exists("{}{}{}.npy".format(args.output, args.embedder,"_reduced" if args.reduced else "")):
+        print("[WARN] {} already exists! Skipping.".format(args.embedder))
+        exit(0)
+
     
     print("Loading Data")
     
@@ -66,6 +72,12 @@ if __name__ == "__main__":
     else:
         df = pd.read_csv(args.input)
 
+    if df.shape[0] > max_rows:
+        print("[WARN] Max rows reached, reducing.")
+        df = df.sample(max_rows, random_state=42).reset_index()
+        os.rename(args.input, args.input+".backup")
+        FastaSave(df['sequence'], args.input)
+    
     bio_embeddings = UsingBioembeddings(df, args.seq_col, args.reduced, device='cuda')
     
     """
@@ -77,7 +89,6 @@ if __name__ == "__main__":
         "cpcprot" : (CPCProtEmbedder, 512),
         "esm" : (ESMEmbedder, 1280),
         "esm1b" : (ESM1bEmbedder, 1280),
-        "esm1v" : (ESM1vEmbedder(ensemble_id=5), 1280),
         "fasttext" : (FastTextEmbedder, 512),
         "glove" : (GloveEmbedder, 512),
         "onehot" : (OneHotEncodingEmbedder, 21),

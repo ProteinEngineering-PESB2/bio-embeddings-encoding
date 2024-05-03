@@ -3,10 +3,9 @@
 sequence_col=$2
 data_path=$1
 
-# seqvec is a weird one. It creates a 3D 
+# seqvec is a weird one. It creates a 3D embed
 declare -a unreduceable_models=("cpcprot" "seqvec")
-#declare -a models=("bepler" "cpcprot" "esm" "esm1b" "fasttext" "glove" "onehot" "plusrnn" "prottrans_albert" "prottrans_bert" "prottrans_t5bfd" "prottrans_xlnet_uniref100" "prottrans_t5xlu50" "seqvec" "word2vec")
-declare -a models=("bepler" "cpcprot")
+declare -a models=("bepler" "cpcprot" "esm" "esm1b" "fasttext" "glove" "onehot" "plusrnn" "prottrans_albert" "prottrans_bert" "prottrans_t5bfd" "prottrans_xlnet_uniref100" "prottrans_t5xlu50" "word2vec")
 for filename in "$data_path"/*.*; do
     mkdir -p ${filename%.*}
     echo "using data from $filename"
