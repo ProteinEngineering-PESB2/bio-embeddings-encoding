@@ -76,7 +76,7 @@ if __name__ == "__main__":
         print("[WARN] Max rows reached, reducing.")
         df = df.sample(max_rows, random_state=42).reset_index()
         os.rename(args.input, args.input+".backup")
-        FastaSave(df['sequence'], args.input)
+        FastaSave(df[args.seq_col], args.input)
     
     bio_embeddings = UsingBioembeddings(df, args.seq_col, args.reduced, device='cuda')
     

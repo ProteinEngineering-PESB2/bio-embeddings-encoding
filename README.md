@@ -13,7 +13,7 @@ To effectively utilize this project, ensure your directory structure follows the
 ```
 After adding the necessary .fasta files, encode the data using the following command:
 ```
-./run_encoding.sh ./data sequences
+./run_encoding.sh ./data sequence
 ```
 Assuming dna.fasta and rna.fasta are provided, executing this script will generate the following files for each listed encoder:
 ```
@@ -51,7 +51,7 @@ Once encoding is completed, add the following directories: output, merged, split
 ```
 Next, execute the script to generate the training data:
 ```
-./generate_data.sh
+./generate_data.sh ./data
 ```
 This will create various directories. Assuming dna and rna sequences are provided, the output should resemble the following structure:
 ```
