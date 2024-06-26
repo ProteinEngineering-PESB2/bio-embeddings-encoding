@@ -24,7 +24,7 @@ class UsingBioembeddings:
             self.np_data[idx] = self.embedder.reduce_per_protein(embed)
 
     def __non_reducing(self):
-        max_length = 100
+        max_length = 150
         self.np_data = np.zeros(shape=(len(self.dataset), max_length, self.embedder.embedding_dimension))
         for idx, embed in tqdm(enumerate(self.embeddings), desc="Assigning embeddings"):
             if len(embed) >= max_length:
@@ -76,7 +76,8 @@ if __name__ == "__main__":
         print("[WARN] Max rows reached, reducing.")
         df = df.sample(max_rows, random_state=42).reset_index()
         os.rename(args.input, args.input+".backup")
-        FastaSave(df[args.seq_col], args.input)
+        #FastaSave(df[args.seq_col], args.input)
+        df.to_csv(args.input, index=False)
     
     bio_embeddings = UsingBioembeddings(df, args.seq_col, args.reduced, device='cuda')
     

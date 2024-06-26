@@ -1,4 +1,5 @@
 import sys, os, argparse
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -11,12 +12,18 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--filename", help="Filename using 'vs' nomenclature", required=True)
     parser.add_argument("-o","--output", help ="Output path", required=True)
     parser.add_argument("-g", "--percentage", help="Percentage of data you want to retrieve")
+    parser.add_argument("-t", "--task", help="Task, 'binary' or 'classification'", required=False, default='classification')
     args = parser.parse_args()
 
-    classes = args.filename.split("vs")
+    if args.task == 'classification':
+        classes = args.filename.split("vs")
+    elif args.task != 'binary':
+        print("Not valid task provided. Exiting...")
+        exit(-1)
     
     percentage = int(args.percentage)/100
     
+    # The embedding dimension has no usage for the moment.
     models = [
             ("bepler", 121),
             ("cpcprot", 512),
@@ -34,24 +41,30 @@ if __name__ == "__main__":
             ("seqvec", 1024),
             ("word2vec", 512)
         ]
+    models.extend([(f"Group_{i}", -1) for i in range(8)])
+    models.extend([(f"Group_{i}_fft", -1) for i in range(8)])
+
     df_total = []
     df_benchmark = []
     
     print("[CSV/FASTA] Loading {}/{}".format(args.input, args.filename))
     df_total = pd.read_csv("{}/{}.csv".format(args.input, args.filename))
-        
-    df_benchmark = df_total.sample(frac=percentage, random_state=42).sort_values(by=['class','index'])
-    df_residue = df_total.drop(df_benchmark.index).sort_values(by=['class','index'])
-
-
-    if not os.path.exists("{}".format(args.output)):
-        os.mkdir("{}".format(args.output)) 
     
-    if not os.path.exists("{}/{}".format(args.output, args.filename)):
-        os.mkdir("{}/{}".format(args.output, args.filename)) 
+    if args.task == 'classification':
+        df_benchmark = df_total.sample(frac=percentage, random_state=42).sort_values(by=['class','index'])
+        df_residue = df_total.drop(df_benchmark.index).sort_values(by=['class','index'])
+    elif args.task == 'binary':
+        df_benchmark = df_total.sample(frac=percentage, random_state=42)
+        df_residue = df_total.drop(df_benchmark.index)
     else:
-        print("[ERROR] {}/{} already exists! Delete the folder to proceed".format(args.output, args.filename))
-        exit(0)
+        print("Not valid task provided. Exiting...")
+        exit(-1)
+
+
+    if not os.path.exists("{}/{}".format(args.output, args.filename)):
+        Path("{}/{}".format(args.output, args.filename)).mkdir(parents=True) 
+    else:
+        print("[WARN] {}/{} already exists! Adding new files...".format(args.output, args.filename))
 
 
     for model in models:

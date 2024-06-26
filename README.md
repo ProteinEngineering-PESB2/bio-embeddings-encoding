@@ -1,3 +1,14 @@
+# Installation
+Given some compatibility problems with newer gpu drivers you need to install CUDA 11.1
+
+It is strongly recommended to run this on a terminal before running the scripts.
+```
+conda create -n bio-embeddings python=3.8
+conda activate bio-embeddings
+pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
+pip install -U "bio-embeddings[all] @ git+https://github.com/sacdallago/bio_embeddings.git"
+```
+
 # Bio Embeddings Encoding
 This project utilizes the bio-embeddings library for processing biological sequences.
 
