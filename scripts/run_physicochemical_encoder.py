@@ -12,7 +12,7 @@ parser.add_argument("-g","--group", help="Name of the group", required=True)
 parser.add_argument("-e","--encoder", help="Path to the encoder", required=True)
 args = parser.parse_args()
 
-print("Loading Data")
+print("Loading Data for Physicochemical Encoder and FFT Transform")
 df = pd.read_csv(args.input)
 
 
@@ -41,6 +41,7 @@ fft_transform = FFTTransform(
 data_fft = fft_transform.encoding_dataset()
 
 
+print("Saving data")
 with open("{}{}.npy".format(args.output, args.group), 'wb') as f:
         np.save(f, np.array(data))
 

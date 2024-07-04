@@ -65,7 +65,7 @@ if __name__ == "__main__":
         exit(0)
 
     
-    print("Loading Data")
+    print("Loading Data for BioEmbeddings")
     
     if args.input.endswith('.fasta'):
         df = FastaParse(args.input, args.seq_col)

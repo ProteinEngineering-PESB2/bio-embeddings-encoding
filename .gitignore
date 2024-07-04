@@ -137,3 +137,4 @@ output/
 *.csv
 *.fasta
 *.npy
+*.ipynb

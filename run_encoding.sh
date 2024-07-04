@@ -19,11 +19,11 @@ find $data_path -type f -name "*.csv" | while IFS= read -r filename; do
     echo "[BASH] Using data from $filename"
     
     for model in ${models[@]}; do
-        echo "[BASH] Running 'python3 ./scripts/encoding_sequences.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model --reduce'"
-        python3 ./scripts/encoding_sequences.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model --reduce
+        echo "[BASH] Running 'python3 ./scripts/run_bio_embeddings.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model --reduce'"
+        python3 ./scripts/run_bio_embeddings.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model --reduce
         if ! [[ " $unreduceable_models[@] " =~ $model ]]; then
-            echo "[BASH] Running 'python3 ./scripts/encoding_sequences.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model'"
-            python3 ./scripts/encoding_sequences.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model
+            echo "[BASH] Running 'python3 ./scripts/run_bio_embeddings.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model'"
+            python3 ./scripts/run_bio_embeddings.py -i $filename -o ${filename%.*}/ -s $sequence_col -e $model
         fi
     done
 
@@ -31,5 +31,8 @@ find $data_path -type f -name "*.csv" | while IFS= read -r filename; do
         echo "[BASH] Running 'python scripts/run_physicochemical_encoder.py -i $filename -o ${filename%.*}/ -g Group_$i -e scripts/cluster_encoders.csv'"
         python scripts/run_physicochemical_encoder.py -i $filename -o ${filename%.*}/ -g Group_$i -e scripts/cluster_encoders.csv
     done
+
+    echo "[BASH] Running 'python scripts/run_one_hot.py -i $filename -o ${filename%.*}/ -s $sequence_col'"
+    python scripts/run_one_hot.py -i $filename -o ${filename%.*}/ -s $sequence_col
 done
 
